@@ -7,7 +7,11 @@
 //  
 //  Seigo Soiuma,    Tohoku University  
 //	 2020, Nov
-//  last update  2021, 1st, July
+//  last update  2022, 13th, Feburary
+//
+//   [注意]　　verr1.9.3以降は、Igor 8 以降のみ対応！！！
+//
+
 
 //	[使い方]		(1) "path"で空間mapしたデータフォルダを指定
 //					(2) 2D or 1D でmappingの次元を選択
@@ -61,6 +65,12 @@
 //				3.	赤boxと連動して表示される、その点のデータも複数regionに対応 (SESのみ)
 //				[使い方]	パネルの下から2行目に、「wn」という数値設定を追加したので、その数値を変えてみたいregionを
 //					みたいregionを選択する。wn数値設定の横にregion名が表示される。
+//
+// ver 1.9.3	[Igor vre8でないと使えないう]
+//				1d profileでもcursor機能を追加。showボタンのmodify imageのバグを修正。
+//				読み込むデータが2Dのとき、角度方向の全積分(edcsum)、エネルギー方向の全積分(mdcsum)を1dwaveとしてrootフォルダ下に作成する機能を追加
+//				表示する際は、自分でrootフォルダのedcsum、mdcsumを表示すること
+
 
 Window SpatMapLoad() : Panel
 	PauseUpdate; Silent 1		// building window...
@@ -859,7 +869,8 @@ Function SML_button_appendbox(ctrlName) : ButtonControl
 			elseif (cond1==1)
 				RemoveFromGraph integbox_y
 			endif
-			break		
+			break
+			
 		case 1:
 		
 			wavelist1 = listmatch(traceList,"!integline_y*")
@@ -891,23 +902,45 @@ Function SML_button_appendcursor(ctrlName) : ButtonControl
 	NVAR pxvalue = dfr:SML_pxvalue,pyvalue = dfr:SML_pyvalue
 	SVAR cwinname = dfr:SML_CurrentWinName
 	
-	String  traceList = TraceNameList("", ";", 1)
-	variable  cond1 = stringmatch(traceList,"*pointAy*")
+	String  traceList = TraceNameList("", ";", 1)  // Get trace (1dwave) list of Top graph 
+
+	variable  cond1 = stringmatch(traceList,"*pointAy*") // is there pointAy wave?
 	
-	if (cond1==0)
-		cwinname = winname(0,1,1)
-		AppendToGraph :SpatialMapLoad:pointAy vs :SpatialMapLoad:pointAx
-		SML_Update_cursor()
-		string imagename = StringFromList(0, ImageNameList("", ";"))
-		cursor /H=1/I/S=2 G $imagename pxvalue,pyvalue
-		SetWindow $cwinname hook(myHook)=SML_CursorProc
-	elseif (cond1==1)
-		SetWindow $cwinname hook(myHook)=$""
-		RemoveFromGraph pointAy
-		cursor /K G 
+	string mapname
+	variable dim
+	[dim,mapname] = SML_ReadDataTopWindow()
+	cwinname = winname(0,1)
 		
-	endif
-		
+	switch(dim)	
+		case 1:	// profile case
+			if(strlen(csrinfo(G))==0)
+				SML_Update_cursor()
+				SML_DataLoadTmp()
+				cursor /H=1/S=2 G $mapname pxvalue
+				SetWindow $cwinname hook(myHook)=SML_CursorProc
+			else
+				SetWindow $cwinname hook(myHook)=$""
+				cursor /K G 
+			endif
+			break	
+		case 2:	// profile case
+			if (cond1==0)  // case of appendiong cursor and pointAy box
+				cwinname = winname(0,1,1)  // get topwindow name
+				AppendToGraph :SpatialMapLoad:pointAy vs :SpatialMapLoad:pointAx
+				SML_Update_cursor()
+				SML_DataLoadTmp()
+				cursor /H=1/I/S=2 G $mapname pxvalue,pyvalue   // append cursor (cross type)
+				SetWindow $cwinname hook(myHook)=SML_CursorProc  // hook the curdor to macro of SML_CursorProc
+			elseif (cond1==1) //case of removing cursor and pointAy box
+				SetWindow $cwinname hook(myHook)=$""  // hook off the curdor 
+				RemoveFromGraph pointAy  
+				cursor /K G 
+			endif
+			
+			break		
+	endswitch
+	
+
 End
 
 Function SML_Check_integbox(ctrlName,checked) : CheckBoxControl
@@ -1058,7 +1091,7 @@ Function SML_button_showloadmat(ctrlName) : ButtonControl
 	Display;DelayUpdate
 
 	String loadmatname = "loadmat" +num2str(sesdatanum)
-	print loadmatname
+//	print loadmatname
 	DFREF dfr = root:SpatialMapLoad
 	wave loadmat = dfr:$loadmatname
 
@@ -1068,7 +1101,8 @@ Function SML_button_showloadmat(ctrlName) : ButtonControl
 		AppendToGraph loadmat
 	elseif(ndim==2)
 		AppendImage loadmat
-		ModifyImage loadmat ctab= {*,*,Terrain256,0}
+		string iname = wavename("",0,1)
+		ModifyImage $iname ctab= {*,*,Terrain256,0}
 	//	ModifyGraph swapXY=1
 	endif
 
@@ -1165,9 +1199,96 @@ Function SML_CursorProc(s)
 //			print s.traceName, s.cursorName, s.pointNumber, s.ypointNumber
 			SML_Update_cursor()
 			SML_DataLoadTmp()
+			SML_reduce1Dwave()
 			endif
 		break
 	endswitch
 
 	
+End
+
+
+Function [variable dimflag, string wavename0] SML_ReadDataTopWindow()
+
+//	NVAR xs = dfr:SML_xstart, xstep = dfr:SML_xstep, xnum = dfr:SML_xnum
+//	NVAR ys = dfr:SML_ystart, ystep = dfr:SML_ystep, ynum = dfr:SML_ynum
+// 将来的に、map やprifileの中に、1D/2Dフラグ、座標情報、path情報、SESnum情報をnoteに書き込み
+// windowを指定したときに、mapping macroのパラメーターを更新させる
+
+	string traceList = TraceNameList("", ";", 1) 
+	string imagelist = imageNameList("", ";") 
+	string wn1
+	variable index, itemnum
+	
+
+	if(itemsinlist(imagelist)==0)
+		dimflag = 1
+		itemnum = itemsinlist(traceList); index =0
+		Do
+			wn1=stringfromList(index,traceList)
+			if(stringmatch(wn1,"*profile*")==1)
+				break
+			endif
+			index+=1
+			wn1 = ""
+		while(index<itemnum)
+		wavename0 = wn1
+		
+		
+	elseif(itemsinlist(imagelist)>0)
+		dimflag = 2
+		itemnum = itemsinlist(imagelist); index =0
+		Do
+			wn1=stringfromList(index,imagelist)
+			if(stringmatch(wn1,"*spatialmap*")==1)
+				break
+			endif
+			index+=1
+			wn1 = ""
+		while(index<itemnum)
+		wavename0 = wn1
+	endif
+	
+	return [dimflag,wavename0]
+
+End
+
+//function calling()
+//	string s1
+//	variable dim
+//	[dim,s1] = SML_ReadDataTopWindow()
+//	print dim,s1
+// End
+	
+	
+	
+Function SML_reduce1Dwave()
+	DFREF dfr = root:SpatialMapLoad
+	NVAR sesdatanum=dfr:SML_sesdatanum
+	
+	String loadmatname = "loadmat" +num2str(sesdatanum)
+	wave loadmat = dfr:$loadmatname
+	
+	if(waveDims(loadmat)==1)
+		return -1
+	endif
+
+	variable enum = dimsize(loadmat,0)
+	variable anum = dimsize(loadmat,1)
+	variable eoffset = dimoffset(loadmat,0)
+	variable aoffset = dimoffset(loadmat,1)
+	variable edelta = dimdelta(loadmat,0)
+	variable adelta = dimdelta(loadmat,1)
+	
+	make/O/D/N=(enum) edcsum
+	make/O/D/N=(anum) mdcsum0,mdcsum 
+
+	MatrixOP/o edcsum = sumRows(loadmat)
+	MatrixOP/o mdcsum0 = sumCols(loadmat)
+	mdcsum = mdcsum0[0][p]
+	
+	SetScale/P x (eoffset),(edelta),"", edcsum
+	SetScale/P x (aoffset),(adelta),"", mdcsum
+	
+
 End
