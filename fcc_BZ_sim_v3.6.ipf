@@ -7,7 +7,11 @@
 ///           RhomboBZ_kzkx_GLUT, ...._hexを修正。横のoffsetをかけた時のkzがずれていた。
 
 ///  ver 3.4  monoclinic追加; MonoClinicBZ_kzkx_GYZC,MonoClinicBZ_kzkx_GZXD(
-///  ver 3.5  monoclinic in ver 3.4 is wring. Correct vrsion of BZ for monoclinic
+///  ver 3.5  monoclinic in ver 3.4 was wrong. Correct vrsion for BZ of monoclinic is implemeted 
+
+///  ver 3.6  hexagonalBZ_kzkx_GK and hexagonalBZ_kzkx_GM have been delted, and modern function 
+///				for GKM kzkx and GMG kzkx have been made (HexBZ_kzkx_GKG and HexBZ_kzkx_GMG)
+
 
 
 Function UpdataKzArc2(hn,flag_kzcorrection,photon_ang)
@@ -24,7 +28,7 @@ Function UpdataKzArc2(hn,flag_kzcorrection,photon_ang)
 	hv = hn
 
 	make/N=300/D/O  kzarc
-	variable acceptance = 34
+	variable acceptance = 14
 	variable kxrange = 0.512*sqrt(hv+InnerPotential-workfunction)*sin(acceptance/2*pi/180)
 	SetScale/I x (-kxrange),(kxrange),"", kzarc
 	variable photon_x, photon_z
@@ -347,139 +351,6 @@ Function fccBZ_kzkx_GLXL(aa,yn,yoff,xn,xoff)
 
 		
 End
-
-
-Function hexagonalBZ_kzkx_GM(unita, offset)
-	variable unita
-	variable offset
-	make/N=200/D/O hexZBy
-	make/N=200/D/O hexZBx
-	hexZBy=nan
-	hexZBx=nan
-	
-
-	make/N=20/D/o BZcordy,BZcordx
-	 
-	BZcordy = {0,2/sqrt(3),2/sqrt(3), 0,-2/sqrt(3),-2/sqrt(3),0}
-	BZcordx = {4/3,2/3,-2/3,-4/3,-2/3,2/3,4/3}
-
-	print  pi/unita
-
-	variable i=0
-	do
-		hexZBy[i] = pi/unita * BZcordy[i]
-		hexZBx[i] = pi/unita * BZcordx[i]
-		i=i+1
-	while (i<8)
-
-	variable unitM = 2 * (2*pi/sqrt(3)/unita)
-	variable unitK =  1.5* (4*pi/3/unita)
-	
-	i=0
-	do		
-		hexZBy[i+10] = hexZBy[i]+unitM
-		hexZBx[i+10] = hexZBx[i]
-		hexZBy[i+20] = hexZBy[i]+2*unitM
-		hexZBx[i+20] = hexZBx[i]
-		hexZBy[i+30] = hexZBy[i]+3*unitM
-		hexZBx[i+30] = hexZBx[i]
-		hexZBy[i+40] = hexZBy[i]+4*unitM
-		hexZBx[i+40] = hexZBx[i]
-		hexZBy[i+50] = hexZBy[i]+unitM/2
-		hexZBx[i+50] = hexZBx[i]+unitK
-		hexZBy[i+60] = hexZBy[i]+unitM/2*3
-		hexZBx[i+60] = hexZBx[i]+unitK
-		hexZBy[i+70] = hexZBy[i]+unitM/2*5
-		hexZBx[i+70] = hexZBx[i]+unitK
-		hexZBy[i+80] = hexZBy[i]+unitM/2*7
-		hexZBx[i+80] = hexZBx[i]+unitK
-		hexZBy[i+90] = hexZBy[i]+unitM/2
-		hexZBx[i+90] = hexZBx[i]-unitK
-		hexZBy[i+100] = hexZBy[i]+unitM/2*3
-		hexZBx[i+100] = hexZBx[i]-unitK
-		hexZBy[i+110] = hexZBy[i]+unitM/2*5
-		hexZBx[i+110] = hexZBx[i]-unitK
-		hexZBy[i+120] = hexZBy[i]+unitM/2*7
-		hexZBx[i+120] = hexZBx[i]-unitK
-		
-		i=i+1
-	while(i<9)
-
-	hexZBy +=( offset * unitM)
-	
-		
-End
-
-
-Function hexagonalBZ_kzkx_GK(unita, offset)
-	variable unita
-	variable offset
-	make/N=200/D/O hexZBy
-	make/N=200/D/O hexZBx
-	hexZBy=nan
-	hexZBx=nan
-	
-
-	make/N=20/D/o BZcordy,BZcordx
-	 
-	BZcordy = {2/3,4/3,2/3,-2/3,-4/3,-2/3,2/3}
-	BZcordx = {2/sqrt(3),0,-2/sqrt(3), -2/sqrt(3),0,2/sqrt(3),2/sqrt(3)}
-
-	print  pi/unita
-
-	variable i=0
-	do
-		hexZBy[i] = pi/unita * BZcordy[i]
-		hexZBx[i] = pi/unita * BZcordx[i]
-		i=i+1
-	while (i<8)
-
-	variable unitM = 2 * (2*pi/sqrt(3)/unita)
-	variable unitK =  3* (4*pi/3/unita)
-	
-	i=0
-	do		
-		hexZBy[i+10] = hexZBy[i]+unitK
-		hexZBx[i+10] = hexZBx[i]
-		hexZBy[i+20] = hexZBy[i]+2*unitK
-		hexZBx[i+20] = hexZBx[i]
-		
-		hexZBy[i+30] = hexZBy[i]+unitK*0.5
-		hexZBx[i+30] = hexZBx[i]+unitM/2
-		hexZBy[i+40] = hexZBy[i]+unitK*1.5
-		hexZBx[i+40] = hexZBx[i]+unitM/2
-		
-		hexZBy[i+50] = hexZBy[i]
-		hexZBx[i+50] = hexZBx[i]+unitM	
-		hexZBy[i+60] = hexZBy[i]+unitK
-		hexZBx[i+60] = hexZBx[i]+unitM
-		hexZBy[i+70] = hexZBy[i]+2*unitK
-		hexZBx[i+70] = hexZBx[i]+unitM
-		
-		hexZBy[i+80] = hexZBy[i]+unitK*0.5
-		hexZBx[i+80] = hexZBx[i]-unitM/2
-		hexZBy[i+90] = hexZBy[i]+unitK*1.5
-		hexZBx[i+90] = hexZBx[i]-unitM/2
-		
-		hexZBy[i+100] = hexZBy[i]
-		hexZBx[i+100] = hexZBx[i]-unitM	
-		hexZBy[i+110] = hexZBy[i]+unitK
-		hexZBx[i+110] = hexZBx[i]-unitM
-		hexZBy[i+120] = hexZBy[i]+2*unitK
-		hexZBx[i+120] = hexZBx[i]-unitM
-		
-
-
-		
-		i=i+1
-	while(i<9)
-
-	hexZBy +=( offset * unitK)
-	
-		
-End
-
-
 
 
 
@@ -1118,4 +989,136 @@ Function MonoClinicBZ_kzkx_GYZC(bb,cc,betha,yn,yoff,xn,xoff)
 	MCZBy = MCZBy + yoff *csy
 	MCZBx = MCZBx + xoff *bsx
 	
+End
+
+
+
+Function HexBZ_kzkx_GKG(aa,yn,yoff,xn,xoff)
+	variable aa
+	variable yn,yoff,xn,xoff
+	
+	make/N=1/D/O hexZBy
+	make/N=1/D/O hexZBx
+	
+	
+	variable unitcellpnts = 7
+	make/N=(unitcellpnts)/D/O uzby
+	make/N=(unitcellpnts)/D/O uzbx
+	hexZBy=Nan
+	hexZBx=Nan
+	
+	duplicate/o uzby BZcordy
+	duplicate/o uzbx BZcordx
+	 
+	BZcordy = {2/3,4/3,2/3,-2/3,-4/3,-2/3,2/3}
+	BZcordx = {2/sqrt(3),0,-2/sqrt(3), -2/sqrt(3),0,2/sqrt(3),2/sqrt(3)}
+	
+
+	variable i=0
+	do
+		uzby[i] = (pi/aa) * BZcordy[i]
+		uzbx[i] = (pi/aa) * BZcordx[i]
+		i=i+1
+	while (i<(unitcellpnts))
+
+
+	variable ynth, xnth
+	variable insn
+	
+	xnth=0
+	do
+	
+	ynth=0
+	do
+		insn = (ynth + xnth * yn) * (unitcellpnts + 1)
+		InsertPoints (insn),(unitcellpnts+1), hexZBy,hexZBx
+		hexZBx[insn] = NaN
+		hexZBy[insn] = NaN
+
+		i=0
+		do
+			hexZBy[insn+i+1] = uzby[i]+ynth*(pi/aa)*2
+			hexZBx[insn+i+1] = uzbx[i]+xnth*(pi/aa)*4/sqrt(3)+mod(ynth,2)*(pi/aa)*2/sqrt(3)
+			i=i+1
+		while(i<unitcellpnts)
+		
+		ynth += 1
+		
+	while(ynth < yn)
+	
+		xnth += 1
+	
+	while(xnth < xn)
+	
+
+	hexZBy = hexZBy + yoff *(pi/aa)*2
+	hexZBx = hexZBx + xoff *(pi/aa)*4/sqrt(3)+mod(yoff,2)*(pi/aa)*2/sqrt(3)
+
+		
+End
+
+
+
+Function HexBZ_kzkx_GMG(aa,yn,yoff,xn,xoff)
+	variable aa
+	variable yn,yoff,xn,xoff
+	
+	make/N=1/D/O hexZBy
+	make/N=1/D/O hexZBx
+	
+	
+	variable unitcellpnts = 7
+	make/N=(unitcellpnts)/D/O uzby
+	make/N=(unitcellpnts)/D/O uzbx
+	hexZBy=Nan
+	hexZBx=Nan
+	
+	duplicate/o uzby BZcordy
+	duplicate/o uzbx BZcordx
+	 
+	BZcordy = {0,2/sqrt(3),2/sqrt(3), 0,-2/sqrt(3),-2/sqrt(3),0}
+	BZcordx = {4/3,2/3,-2/3,-4/3,-2/3,2/3,4/3}
+	
+
+	variable i=0
+	do
+		uzby[i] = (pi/aa) * BZcordy[i]
+		uzbx[i] = (pi/aa) * BZcordx[i]
+		i=i+1
+	while (i<(unitcellpnts))
+
+
+	variable ynth, xnth
+	variable insn
+	
+	xnth=0
+	do
+	
+	ynth=0
+	do
+		insn = (ynth + xnth * yn) * (unitcellpnts + 1)
+		InsertPoints (insn),(unitcellpnts+1), hexZBy,hexZBx
+		hexZBy[insn] = NaN
+		hexZBx[insn] = NaN
+
+		i=0
+		do
+			hexZBy[insn+i+1] = uzby[i]+ynth*(pi/aa)*4/sqrt(3) + mod(xnth,2)*(pi/aa)*2/sqrt(3)
+			hexZBx[insn+i+1] = uzbx[i]+xnth*(pi/aa)*2
+			i=i+1
+		while(i<unitcellpnts)
+		
+		ynth += 1
+		
+	while(ynth < yn)
+	
+		xnth += 1
+	
+	while(xnth < xn)
+	
+
+	hexZBy = hexZBy + yoff *(pi/aa)*4/sqrt(3)+mod(xoff,2)*(pi/aa)*2/sqrt(3)
+	hexZBx = hexZBx + xoff *(pi/aa)*2
+
+		
 End
